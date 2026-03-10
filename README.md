@@ -159,3 +159,4 @@ curl -X POST http://localhost:8080/api/v1/cart/checkout \
 - Migraciones automáticas
 - CORS habilitado
 - Middlewares (Logger, Recovery, Timeout)
+# Ecommerce
