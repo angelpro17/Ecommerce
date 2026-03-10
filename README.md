@@ -1,162 +1,97 @@
-# Ecommerce API - Clean Architecture
+# Ecommerce API
 
-API REST de ecommerce con Go, Chi Router y PostgreSQL.
+API REST de ecommerce construida con **Go**, **Chi Router** y **PostgreSQL**, siguiendo **Clean Architecture**.
 
-## Estructura del Proyecto (Clean Architecture)
+## Tecnologias
+
+- **Go 1.21+** - Lenguaje principal
+- **Chi v5** - Router HTTP
+- **PostgreSQL 14+** - Base de datos
+- **Swagger** - Documentacion interactiva
+
+## Arquitectura
 
 ```
-├── cmd/
-│   ├── main.go          # Punto de entrada, configuración y DI
-│   └── api.go           # Configuración del servidor HTTP
-├── internal/
-│   ├── store/
-│   │   ├── postgres.go  # Conexión a PostgreSQL
-│   │   └── migrations.go # Migraciones de BD
-│   ├── products/
-│   │   ├── entity.go    # Entidades del dominio
-│   │   ├── repository.go # Interface del repositorio
-│   │   ├── postgres.go  # Implementación PostgreSQL
-│   │   ├── service.go   # Lógica de negocio
-│   │   └── handlers.go  # Handlers HTTP
-│   └── cart/
-│       ├── entity.go    # Entidades del carrito
-│       ├── repository.go # Interface del repositorio
-│       ├── postgres.go  # Implementación PostgreSQL
-│       ├── service.go   # Lógica de negocio
-│       └── handlers.go  # Handlers HTTP
-└── go.mod
+internal/
+├── product/                    # Modulo de productos
+│   ├── domain/                 # Entidades, errores y puertos (interfaces)
+│   ├── application/            # Logica de negocio (service)
+│   └── interfaces/http/        # Handlers HTTP y DTOs
+├── cart/                       # Modulo de carrito
+│   ├── domain/
+│   ├── application/
+│   └── interfaces/http/
+└── platform/                   # Infraestructura compartida
+    ├── postgres/               # Repositorios, migraciones, conexion
+    └── http/                   # Helpers de respuesta JSON
 ```
 
-## Iniciar
+Cada modulo sigue la regla de dependencia: `domain` no importa nada externo, `application` solo depende de `domain`, y `interfaces` + `platform` implementan los puertos.
 
-### 1. Requisitos
-- Go 1.21+
-- PostgreSQL 14+
+## Endpoints
 
-### 2. Configurar PostgreSQL
+### Products
 
-```bash
-# Crear base de datos
-createdb ecommerce
-
-# O con Docker
-docker run --name postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ecommerce -p 5432:5432 -d postgres:15
-```
-
-### 3. Variables de entorno (opcional)
-
-```bash
-export DATABASE_URL="postgres://postgres:postgres@localhost:5432/ecommerce?sslmode=disable"
-export SERVER_ADDR=":8080"
-```
-
-### 4. Ejecutar
-
-```bash
-go run cmd/*.go
-```
-
-## API Endpoints
-
-### Products (CRUD)
-
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | `/api/v1/products` | Listar productos (paginado) |
-| GET | `/api/v1/products/{id}` | Obtener producto por ID |
-| POST | `/api/v1/products` | Crear producto |
-| PUT | `/api/v1/products/{id}` | Actualizar producto |
-| DELETE | `/api/v1/products/{id}` | Eliminar producto |
+| Metodo | Ruta | Descripcion |
+|--------|------|-------------|
+| GET | `/api/v1/products` | Listar (paginado) |
+| GET | `/api/v1/products/{id}` | Obtener por ID |
+| POST | `/api/v1/products` | Crear |
+| PUT | `/api/v1/products/{id}` | Actualizar |
+| DELETE | `/api/v1/products/{id}` | Eliminar |
 
 ### Cart
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | `/api/v1/cart` | Ver carrito actual |
-| POST | `/api/v1/cart/items` | Agregar item al carrito |
+| Metodo | Ruta | Descripcion |
+|--------|------|-------------|
+| GET | `/api/v1/cart` | Ver carrito |
+| POST | `/api/v1/cart/items` | Agregar item |
 | PUT | `/api/v1/cart/items/{productId}` | Actualizar cantidad |
 | DELETE | `/api/v1/cart/items/{productId}` | Eliminar item |
 | DELETE | `/api/v1/cart` | Vaciar carrito |
-| POST | `/api/v1/cart/checkout` | Finalizar compra |
+| POST | `/api/v1/cart/checkout` | Checkout |
 
-## Ejemplos de uso
+> El header `X-User-ID` identifica al usuario. Si no se envia, se usa `anonymous`.
 
-### Crear producto
+## Ejecutar
+
 ```bash
-curl -X POST http://localhost:8080/api/v1/products \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "iPhone 15",
-    "description": "Smartphone Apple",
-    "price": 999.99,
-    "stock": 50,
-    "image_url": "https://example.com/iphone.jpg"
-  }'
+# PostgreSQL con Docker
+docker run --name postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=ecommerce -p 5432:5432 -d postgres:15
+
+# Iniciar servidor
+go run cmd/*.go
 ```
 
-### Listar productos
+El servidor inicia en `http://localhost:8080`. Swagger UI en `/swagger/index.html`.
+
+### Variables de entorno
+
+| Variable | Default |
+|----------|---------|
+| `DATABASE_URL` | `postgres://postgres:postgres@localhost:5432/ecommerce?sslmode=disable` |
+| `SERVER_ADDR` | `:8080` |
+
+## Tests
+
 ```bash
-curl "http://localhost:8080/api/v1/products?page=1&page_size=10"
+go test ./internal/... -cover
 ```
 
-### Agregar al carrito
-```bash
-curl -X POST http://localhost:8080/api/v1/cart/items \
-  -H "Content-Type: application/json" \
-  -H "X-User-ID: user123" \
-  -d '{
-    "product_id": 1,
-    "quantity": 2
-  }'
-```
+| Paquete | Cobertura |
+|---------|-----------|
+| `cart/application` | 98.6% |
+| `cart/interfaces/http` | 98.6% |
+| `product/application` | 97.5% |
+| `product/interfaces/http` | 100% |
 
-### Ver carrito con total
-```bash
-curl http://localhost:8080/api/v1/cart \
-  -H "X-User-ID: user123"
-```
+## Funcionalidades
 
-### Checkout
-```bash
-curl -X POST http://localhost:8080/api/v1/cart/checkout \
-  -H "X-User-ID: user123"
-```
-
-## Clean Architecture
-
-```
-┌─────────────────────────────────────────────────┐
-│                   Handlers                       │  ← Capa de Presentación
-│            (HTTP Request/Response)               │
-└─────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│                   Service                        │  ← Capa de Negocio
-│            (Business Logic)                      │
-└─────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│                 Repository                       │  ← Capa de Datos
-│         (Interface + PostgreSQL)                 │
-└─────────────────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────┐
-│                  PostgreSQL                      │  ← Base de Datos
-└─────────────────────────────────────────────────┘
-```
-
-## Características
-
-- CRUD completo de productos
-- Carrito de compras por usuario
-- Cálculo automático de totales con IVA (16%)
-- Control de stock
-- Checkout con actualización de inventario
-- Paginación en listados
-- Migraciones automáticas
+- CRUD completo de productos con validaciones
+- Carrito de compras por usuario con calculo de IVA (16%)
+- Control de stock en tiempo real
+- Checkout con actualizacion de inventario
+- Paginacion en listados
+- Migraciones automaticas
 - CORS habilitado
-- Middlewares (Logger, Recovery, Timeout)
-# Ecommerce
+- Swagger UI integrado
