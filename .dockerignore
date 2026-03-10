@@ -1,0 +1,19 @@
+# Dependencias
+go.sum
+
+# Documentacion generada
+docs/swagger.json
+docs/swagger.yaml
+
+# Tests y cobertura
+*_test.go
+coverage.out
+
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
