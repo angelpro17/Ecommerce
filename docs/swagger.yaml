@@ -1,0 +1,8 @@
+swagger: "2.0"
+info:
+  description: API REST de ecommerce con productos y carrito de compras
+  title: Ecommerce API
+  version: "1.0"
+host: localhost:8080
+basePath: /
+paths: {}
